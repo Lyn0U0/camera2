@@ -1,0 +1,11 @@
+# 忽略 node_modules 文件夹
+node_modules/
+
+# 忽略上传的临时文件
+uploads/
+
+# 忽略日志文件
+*.log
+
+# 忽略环境变量文件（如 .env）
+.env
