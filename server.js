@@ -56,14 +56,16 @@ app.post('/process-image', upload.single('image'), async (req, res) => {
 app.listen(3000, () => {
     console.log('服务器已启动，监听端口 3000');
 });
-// 模擬從 log 中獲取錯誤訊息
-function getLogError() {
-  // 在這裡動態獲取錯誤訊息，比如從 API 或應用狀態
-  return "Network error: Failed to fetch resource.";
-}
-
-// 顯示錯誤訊息為彈跳視窗
-const errorMsg = getLogError();
-if (errorMsg) {
-  swal("Error", errorMsg, "error");
-}
+app.get('/some-route', (req, res) => {
+  try {
+    // 正常的伺服器邏輯代碼
+    // 如果沒有錯誤，返回成功的響應
+    res.send("Request successful!");
+  } catch (error) {
+    // 捕捉錯誤並將其傳遞給前端
+    const errorMsg = "An error occurred: " + error.message;
+    
+    // 返回錯誤狀態碼及錯誤訊息作為 JSON
+    res.status(500).json({ message: errorMsg });
+  }
+});
