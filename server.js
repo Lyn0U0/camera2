@@ -4,18 +4,30 @@ const FormData = require('form-data');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-
 const app = express();
 
-// 设置静态文件目录
+// Set up static files
 app.use(express.static('public'));
 
-// 配置 multer，用于处理文件上传
+// For handling JSON in POST requests (e.g., base64 images)
+app.use(express.json({ limit: '50mb' }));
+
+// Configure multer for file uploads
 const upload = multer({ dest: 'uploads/' });
 
-// 处理图片处理请求
+// Process uploaded or base64 images
 app.post('/process-image', upload.single('image'), async (req, res) => {
-    const imagePath = req.file.path;
+    let imagePath = '';
+
+    if (req.file) {
+        // Handle file upload case
+        imagePath = req.file.path;
+    } else if (req.body.image) {
+        // Handle base64 image case
+        const base64Data = req.body.image.replace(/^data:image\/png;base64,/, "");
+        imagePath = path.join(__dirname, 'uploads', 'temp_image.png');
+        fs.writeFileSync(imagePath, base64Data, 'base64');
+    }
 
     const payload = {
         image: fs.createReadStream(imagePath),
@@ -32,7 +44,7 @@ app.post('/process-image', upload.single('image'), async (req, res) => {
                 validateStatus: undefined,
                 responseType: "arraybuffer",
                 headers: {
-                    Authorization: `Bearer sk-artpidiuPviNno3KetApYqjgcS3Chz8nzHij0SdjFBzwBB86`, // 请替换为您的 API Key
+                    Authorization: `Bearer sk-artpidiuPviNno3KetApYqjgcS3Chz8nzHij0SdjFBzwBB86`,
                     Accept: "image/*"
                 },
             },
@@ -46,26 +58,13 @@ app.post('/process-image', upload.single('image'), async (req, res) => {
         }
     } catch (error) {
         console.error(error);
-        res.status(500).send('处理图片时出错');
+        res.status(500).send('Error processing the image.');
     } finally {
-        // 删除临时上传的文件
-        fs.unlinkSync(imagePath);
+        // Clean up
+        if (imagePath) fs.unlinkSync(imagePath);
     }
 });
 
 app.listen(3000, () => {
-    console.log('服务器已启动，监听端口 3000');
-});
-app.get('/some-route', (req, res) => {
-  try {
-    // 正常的伺服器邏輯代碼
-    // 如果沒有錯誤，返回成功的響應
-    res.send("Request successful!");
-  } catch (error) {
-    // 捕捉錯誤並將其傳遞給前端
-    const errorMsg = "An error occurred: " + error.message;
-    
-    // 返回錯誤狀態碼及錯誤訊息作為 JSON
-    res.status(500).json({ message: errorMsg });
-  }
+    console.log('Server started on port 3000');
 });

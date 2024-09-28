@@ -1,67 +1,192 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>图片处理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera and Upload</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            flex-direction: column;
+        }
+
+        .camera-container {
+            background-color: #333;
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 320px;
+            height: 500px;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .camera-container h1 {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        #video {
+            width: 100%;
+            border-radius: 10px;
+            border: 5px solid #666;
+            display: none;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+        }
+
+        .camera-btn, .upload-btn {
+            background-color: #ff4f4f;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .camera-btn:active, .upload-btn:active {
+            transform: scale(0.9);
+        }
+
+        #uploadInput {
+            display: none;
+        }
+
+        #previewImage {
+            display: none;
+            margin-top: 20px;
+            width: 100%;
+            border-radius: 10px;
+            border: 5px solid #666;
+        }
+
+        #confirmUploadBtn {
+            display: none;
+            margin-top: 20px;
+            background-color: #4fafff;
+            color: white;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #loading {
+            display: none;
+            margin-top: 20px;
+            font-size: 18px;
+            color: #4fafff;
+        }
+
+        #generatedImage {
+            display: none;
+            margin-top: 20px;
+            width: 50%;
+            border-radius: 10px;
+            border: 5px solid #666;
+        }
+    </style>
 </head>
 <body>
-    <h1>上传或拍摄一张图片</h1>
-    <input type="file" accept="image/*" capture="environment" id="imageInput">
-    <br><br>
-    <button id="submitButton">提交</button>
-    <h2>原始图片</h2>
-    <img id="originalImage" src="" alt="原始图片" width="300">
-    <h2>处理后的图片</h2>
-    <img id="processedImage" src="" alt="处理后的图片" width="300">
 
-    <script>
-        const imageInput = document.getElementById('imageInput');
-        const originalImage = document.getElementById('originalImage');
-        const processedImage = document.getElementById('processedImage');
-        const submitButton = document.getElementById('submitButton');
+<div class="camera-container">
+    <h1>Camera & Upload</h1>
+    <video id="video" autoplay></video>
+    <div class="buttons">
+        <button class="camera-btn" id="startCamera">📸</button>
+        <button class="upload-btn" id="uploadButton">📁</button>
+        <input type="file" id="uploadInput" accept="image/*">
+    </div>
+    <img id="previewImage" alt="Image preview">
+    <button id="confirmUploadBtn">确认送出</button>
+</div>
 
-        let selectedFile;
+<!-- Loading indicator -->
+<div id="loading">图片生成中...</div>
 
-        imageInput.addEventListener('change', (event) => {
-            selectedFile = event.target.files[0];
-            if (selectedFile) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    originalImage.src = e.target.result;
-                };
-                reader.readAsDataURL(selectedFile);
-            }
-        });
+<!-- Placeholder for generated image -->
+<img id="generatedImage" alt="Generated Image">
 
-        submitButton.addEventListener('click', () => {
-            if (!selectedFile) {
-                alert('请先选择或拍摄一张图片！');
-                return;
-            }
+<script>
+    const video = document.getElementById('video');
+    const startCamera = document.getElementById('startCamera');
+    const uploadButton = document.getElementById('uploadButton');
+    const uploadInput = document.getElementById('uploadInput');
+    const previewImage = document.getElementById('previewImage');
+    const confirmUploadBtn = document.getElementById('confirmUploadBtn');
+    const loading = document.getElementById('loading');
+    const generatedImage = document.getElementById('generatedImage');
+    let selectedFile = null;
 
+    // 选择图片时，显示预览并启用“确认送出”按钮
+    uploadInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+                confirmUploadBtn.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 用户点击上传按钮时，触发文件选择对话框
+    uploadButton.addEventListener('click', () => {
+        uploadInput.click();
+    });
+
+    // 点击确认按钮后，显示loading并上传图片
+    confirmUploadBtn.addEventListener('click', () => {
+        if (selectedFile) {
             const formData = new FormData();
             formData.append('image', selectedFile);
+
+            // 显示加载动画
+            loading.style.display = 'block';
+            confirmUploadBtn.style.display = 'none';
 
             fetch('/process-image', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('网络响应失败');
-                }
-                return response.blob();
-            })
+            .then(response => response.blob())
             .then(blob => {
-                const url = URL.createObjectURL(blob);
-                processedImage.src = url;
+                // 隐藏加载动画
+                loading.style.display = 'none';
+
+                // 显示生成的图片
+                const url = window.URL.createObjectURL(blob);
+                generatedImage.src = url;
+                generatedImage.style.display = 'block';
             })
-            .catch(error => {
-                console.error('发生错误：', error);
+            .catch(err => {
+                console.error('上传图片时出错:', err);
+                loading.style.display = 'none';
+                confirmUploadBtn.style.display = 'block';
+                alert('图片生成失败，请重试。');
             });
-        });
-    </script>
-    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+        }
+    });
+</script>
 
 </body>
 </html>
